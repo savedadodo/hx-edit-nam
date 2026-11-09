@@ -157,8 +157,10 @@ def prepare_model(model, token, workspace, converter):
         # HX Edit can rewrite non-ASCII paths in the native import batch.
         ascii_name = model['name'].encode('ascii', 'ignore').decode('ascii')
         label = re.sub(r'[<>:"/\\|?*\x00-\x1f\x7f]', '_', ascii_name).strip(' .')
-        name = f'T3K {int(model["id"])} {secrets.token_hex(3)} {label}'
-        name = name[:31].rstrip(' .')
+        # The profile's own name first (User IR names hold 31 characters), then its TONE3000 ID.
+        number = str(int(model['id']))
+        label = label[:31 - len(number) - 1].rstrip(' .')
+        name = f'{label} {number}' if label else f'T3K {number}'
         capture = Path(folder, name + '.nam')
         capture.write_bytes(read_url(model['model_url'], token=token))
         return convert_batch([capture], workspace, converter)[0]

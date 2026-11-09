@@ -152,9 +152,8 @@ class ToneTests(unittest.TestCase):
             read.return_value = json.dumps(capture()).encode()
             wav = Path(prepare_model(model, 'test-token', folder, CONVERTER))
             self.assertTrue(is_nam_wav(wav))
-            self.assertTrue(wav.name.startswith('T3K 42 '))
+            self.assertEqual(wav.stem, '_5150III_ amp 42')
             self.assertTrue(wav.name.isascii())
-            self.assertTrue(wav.stem.endswith('_5150III_ amp'))
             read.assert_called_once_with(model['model_url'], token='test-token')
             audition = stage_tone_import(wav, folder)
             audition.unlink()  # HX Edit consumes staged files during import.
