@@ -1,5 +1,16 @@
 # HX Edit NAM
 
+> **This fork (savedadodo/hx-edit-nam) adds Helix Floor support.** The NAM A2 Lite model (ID 380)
+> is listed for the Helix Floor (device 0x00210001) as well as the Helix LT, and the NAM profile
+> scan finds a Floor (USB 0x4248). For a Floor running a 3.80.0 NAM build such as
+> [helix-floor-nam-lite](https://github.com/savedadodo/helix-floor-nam-lite/tree/helix-floor).
+> The converter still comes from the sibling `helix-lt-nam` checkout (same capture format).
+>
+> Optional: if your firmware shows renamed stock models, put a `custom-names.csv` here (ignored by
+> git; or set `HX_EDIT_NAM_NAMES`) with `internal` (HX Edit symbol) and `real_name` columns, and
+> HX Edit shows the same names. Display only: presets and model IDs are unchanged. No list of names
+> is included.
+
 Проект использует локальную копию оригинального HX Edit 3.82 и ресурсов Line 6. Версия для Windows проверяет SHA-256 оригинального `HX Edit.exe` при запуске, версия для macOS сверяет Mach-O при сборке. Инсталляторы и рабочие копии хранятся локально.
 
 ## Готовая сборка для macOS на Apple Silicon

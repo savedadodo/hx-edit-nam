@@ -1,6 +1,7 @@
-"""Build the Helix LT NAM catalog from the local HX Edit 3.82 resources."""
+"""Build the Helix LT/Floor NAM catalog from the local HX Edit 3.82 resources."""
 
 import copy
+import csv
 import hashlib
 import json
 import os
@@ -15,11 +16,46 @@ ROOT = Path(__file__).resolve().parent
 EXE_HASH = 'f7faac4996164f9039c9ae3ca8d85cd135c5bceae8a511c8921a1244046cab66'
 NAM_SYMBOL = 'HD2_AmpNAMLite'
 NAM_ID = 380
-LT_DEVICE_ID = 0x00210004
+# Devices whose 3.80.0 NAM builds use model 380: Helix LT (helix-lt-nam) and Helix Floor
+# (savedadodo/helix-floor-nam-lite).
+DEVICE_IDS = (0x00210004, 0x00210001)
+# Optional display names for stock models (firmware that renames them on the device): a CSV with
+# `internal` (HX Edit symbol) and `real_name` columns, kept locally and ignored by git.
+CUSTOM_NAMES = Path(os.environ.get('HX_EDIT_NAM_NAMES') or ROOT / 'custom-names.csv')
 
 
 def nul(value):
     return value + '\0'
+
+
+def custom_names():
+    if not CUSTOM_NAMES.is_file():
+        return {}
+    names = {}
+    with CUSTOM_NAMES.open(newline='', encoding='utf-8-sig') as rows:
+        for row in csv.DictReader(rows):
+            symbol, name = (row.get('internal') or '').strip(), (row.get('real_name') or '').strip()
+            if not symbol or not name:
+                continue
+            names[nul(symbol)] = nul(name)
+            # HX Edit defines a Mono/Stereo pair once, without the suffix.
+            for suffix in ('Mono', 'Stereo'):
+                if symbol.endswith(suffix):
+                    names.setdefault(nul(symbol.removesuffix(suffix)), nul(name))
+    return names
+
+
+def rename(node, names, key):
+    """Rename every entry whose `key` is a symbol in names, in place."""
+    if isinstance(node, list):
+        for item in node:
+            rename(item, names, key)
+    elif isinstance(node, dict):
+        if node.get(key) in names and 'name\0' in node:
+            node['name\0'] = names[node[key]]
+        for value in node.values():
+            if isinstance(value, (list, dict)):
+                rename(value, names, key)
 
 
 def patch_catalog(resources):
@@ -54,7 +90,7 @@ def patch_catalog(resources):
     model['name\0'] = 'NAM A2 Lite\0'
     model['symbolicID\0'] = nul(NAM_SYMBOL)
     model['load\0'] = 36.0
-    model['devices\0'] = [{'id\0': LT_DEVICE_ID, 'version\0': '0x03800000\0'}]
+    model['devices\0'] = [{'id\0': device, 'version\0': '0x03800000\0'} for device in DEVICE_IDS]
     model['params\0'] = parameters + [amp_params['@enabled\0'], amp_params['@bypassvolume\0']]
     del model['cablink\0'], model['ircablink\0']
     definitions.append(model)
@@ -70,6 +106,11 @@ def patch_catalog(resources):
         'image\0': tile['image\0'],
         'params\0': [{p['symbolicID\0']: p['name\0']} for p in parameters],
     }]})
+
+    names = custom_names()
+    if names:
+        rename(definitions, names, 'symbolicID\0')
+        rename(catalog, names, 'id\0')
 
     symbols_path.write_text(json.dumps(symbols, indent=2) + '\n', encoding='utf-8')
     definitions_path.write_bytes(msgpack.packb(definitions, use_single_float=True))
@@ -116,8 +157,8 @@ def patch_library(resources, scan_error):
                 <multiline>yes</multiline><text_color>0xFFC4C4C4</text_color></text>
         </text_widget>
     ''')
-    status = ('Connect Helix LT and restart to scan profiles.' if scan_error
-              else 'No NAM profiles on this Helix LT.')
+    status = ('Connect your Helix and restart to scan profiles.' if scan_error
+              else 'No NAM profiles on this Helix.')
     message.find('text/label').text = status + '\nUse Import to add a profile to a free slot.'
     frame.append(message)
     library.append(view)

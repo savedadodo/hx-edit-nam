@@ -1,3 +1,5 @@
 /build/
 /HX Edit v3.82 Installer.exe
 __pycache__/
+/custom-names.csv
+/.venv/
